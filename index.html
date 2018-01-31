@@ -1,0 +1,245 @@
+<html>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    <script src="jquery.scrollTo.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.4.0/css/bulma.min.css">
+    <link rel="shortcut icon" href"favicon.ico"/>
+    <title>Reddit Summarizer</title>
+    <style>
+        .selection{
+            flex-wrap: nowrap;
+            align-content: center;
+            text-align: center;
+            margin: 7%;
+        }
+        #reddittag{
+            margin-top: 2%;
+        }
+        h1{
+            display:none;
+            text-align:center;
+        }
+        #status{
+            text-align:center;
+        }
+        #loadicon{
+            display:none;
+        }
+        #allbutton,#yearbutton,#monthbutton,#weekbutton,#daybutton,#hourbutton{
+            text-align:center;
+            width:200px;
+        }
+        #all,#year,#month,#week,#day,#hour{
+            display:none;
+            padding:none;
+            text-align:center;
+            margin-left:5%;
+            margin-right:5%;
+            font-size:150%;
+        }
+        #description blockquote{
+            display:none;
+            //margin-top:-24px;
+            margin-bottom:2%;
+            margin-left: 10px;
+            margin-right: 10px;
+            border:solid;
+            border-color:gray;
+        }
+        #minimizeicon{
+            outline:none;
+            float:left;
+        }
+        .rotate90{
+            -webkit-transform: rotate(90deg);
+        	-moz-transform: rotate(90deg);
+        	-ms-transform: rotate(90deg);
+        	-o-transform: rotate(90deg);
+        	transform: rotate(90deg);
+        }
+        .revrotate90{
+            -webkit-transform: rotate(0deg);
+        	-moz-transform: rotate(0deg);
+        	-ms-transform: rotate(0deg);
+        	-o-transform: rotate(0deg);
+        	transform: rotate(0deg);
+        }
+        .titlebar{
+            font-size:400%;
+            text-align:center;
+            margin: 12%;
+        }
+        #signature{
+            text-align:left;
+            font-size:75%;
+        }
+        .endbar{
+            margin-top:10%;
+        }
+    </style>
+    <body>
+        <p id="signature"><small>Created by Connor Penrod</small></p>
+        <div class="titlebar">
+            <p>Reddit Summarizer</p>
+        </div>
+        <div class="selection">
+            <div class="columns">
+                <div class="column">
+                    <label class="label" id="reddittag">Name of Subreddit:</label>
+                </div>
+                <div class="column is-two-thirds">
+                    <p class="control">
+                        <input name="reddit-textbox" class="input" type="text" placeholder="Subreddit Name" id="reddit-textbox">
+                    </p>
+                </div>
+                <div class="column">
+                    <a class="button is-primary" id="getsummary">Get Summary</a>
+                </div>
+            </div>
+        </div>
+        <div class="content" id="status">
+            <img id="loadicon" src="loading.gif">
+            <p><strong></strong></p>
+        </div>
+        <div class="master">
+            <div class="content is-small">
+                <h1><a class="button is-primary" id="allbutton">Alltime Top Posts</a></h1>
+                <div id="all">
+                    
+                </div>
+            </div>
+            <div class="content is-small">
+                <h1><a class="button is-primary" id="yearbutton">Year's Top Posts</a></h1>
+                <div id="year">
+                    
+                </div>
+            </div>
+            <div class="content is-small" >
+                <h1><a class="button is-primary" id="monthbutton">Month' Top Posts</a></h1>
+                <div id="month">
+                    
+                </div>
+            </div>
+            <div class="content is-small">
+                <h1><a class="button is-primary" id="weekbutton">Week's Top Posts</a></h1>
+                <div id="week">
+                    
+                </div>
+            </div>
+            <div class="content is-small">
+                <h1><a class="button is-primary" id="daybutton">Day's Top Posts</a></h1>
+                <div id="day">
+                    
+                </div>
+            </div>
+            <div class="content is-small">
+                <h1><a class="button is-primary" id="hourbutton">Hour's Top Posts</a></h1>
+                <div id="hour">
+                    
+                </div>
+            </div>
+            <div class="endbar">
+                
+            </div>
+        </div>
+    </body>
+    <script>
+        //used for dropdown button functionality
+        function toggleDesc (dropbox, index, group){
+            console.log($($(dropbox).find('input')).attr('id'));
+            if($($($(dropbox).find('input'))).hasClass("rotate90"))
+            {
+                $($($(dropbox).find('input'))).removeClass("rotate90");
+                $($($(dropbox).find('input'))).addClass("revrotate90");
+                $("#description #quote" + group + index).slideToggle("fast");
+                console.log("unflip");
+            }
+            else
+            {
+                console.log("flip");
+                $($($(dropbox).find('input'))).removeClass("revrotate90");
+                $($($(dropbox).find('input'))).addClass("rotate90");
+                $("#description #quote" + group + index).slideToggle("fast"); //FIX
+            }
+            
+        }
+        
+    
+        var times = ["all", "year", "month", "week", "day", "hour"];
+        var hasScrolled = false;
+        $(document).ready(function(){
+            console.log("ready");
+            
+            $("#reddit-textbox").keyup(function(event){
+                if(event.keyCode == 13)
+                {
+                    $("#getsummary").click();
+                }
+            });
+            
+            //if Get Summary is clicked
+            $("#getsummary").click(function () {
+                
+                $(".customcontent").remove(); //removes all threads for reuse
+                $(".endbar").css("margin-top", "50%"); //add placeholder whitespace
+                var searchQuery = $("#reddit-textbox").val();
+                
+                $("#status strong").text("");
+                $("h1").css("display", "none");
+                $("#loadicon").css("display","inline"); //loading symbol
+                //checks if subreddit exists by checking if a successful JSON request can be made
+                $.getJSON(("https://www.reddit.com/r/" + searchQuery + ".json"), function(data){
+                    $(".endbar").css("margin-top", "10%"); //remove whitespace
+                    $("#loadicon").css("display","none"); //remove loading symbol
+                    $("#status strong").text("Summary of /r/" + searchQuery + ":");
+                    if(hasScrolled==false)
+                    {
+                        $('html, body').animate({scrollTop: $("#reddit-textbox").offset().top}, 500); //scrolls page down; fancy
+                        hasScrolled = true;
+                    }
+                    $(".content").each(function (x) { //in each section...
+                        //get JSON data from subreddit at each time (alltime, month, week, etc)
+                        $.getJSON(("https://www.reddit.com/r/" + searchQuery + "/top.json?sort=top&limit=5&t=" + times[x]), function(result){
+                           $.each(result.data.children, function(i, thread){
+                               //for each thread, generate HTML to show preview
+                               $("#" + times[x]).append("<div class='customcontent'>"
+                                                            + '<p class="box" onclick="toggleDesc(this, ' + i + ', ' + '\'' + times[x] + '\'' + ')"><input type="image" src="minimized.png" id="minimizeicon" width=20 height=20><strong>' + thread.data.title + "</strong><small>  Upvotes: " + thread.data.ups+ "</small> <a href='https://www.reddit.com" + thread.data.permalink + "'>View on Reddit</a></p>"
+                                                            + "<div class='content'id='description'>"
+                                                                + "<blockquote id='quote" + times[x] + i + "'><img src='" + thread.data.preview.images[0].source.url + "'></blockquote>"
+                                                            + "</div>"
+                                                        + "</div>");
+                           });
+                        });
+                    });
+                    $("h1").css("display", "block");
+                })
+                .fail(function(){
+                    $("#loadicon").css("display","none"); //remove loading symbol
+                    $("#status strong").text("We were unable to find /r/" + searchQuery);
+                });
+                    
+                
+            });
+            
+            $("#allbutton").click(function (){
+                $("#all").slideToggle("fast");
+            });
+            $("#yearbutton").click(function (){
+                $("#year").slideToggle("fast");
+            });
+            $("#monthbutton").click(function (){
+                $("#month").slideToggle("fast");
+            });
+            $("#weekbutton").click(function (){
+                $("#week").slideToggle("fast");
+            });
+            $("#daybutton").click(function (){
+                $("#day").slideToggle("fast");
+            });
+            $("#hourbutton").click(function (){
+                $("#hour").slideToggle("fast");
+            });
+            
+            
+        });
+    </script>
+</html>
